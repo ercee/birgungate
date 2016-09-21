@@ -28,7 +28,8 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelReaderUtility {
-    CellStyle cellStyle;
+    CellStyle cellStyleAsDate;
+    CellStyle cellStyleAsTime;
 
     public ExcelReaderUtility() {
 	super();
@@ -43,9 +44,11 @@ public class ExcelReaderUtility {
 	    e2.printStackTrace();
 	}
 	XSSFWorkbook workbook = new XSSFWorkbook();
-	cellStyle = workbook.createCellStyle();
+	cellStyleAsDate = workbook.createCellStyle();
 	CreationHelper createHelper = workbook.getCreationHelper();
-	cellStyle.setDataFormat(createHelper.createDataFormat().getFormat("d MMMM yyyy h:mm"));
+	cellStyleAsDate.setDataFormat(createHelper.createDataFormat().getFormat("d MMMM yyyy"));
+	cellStyleAsTime = workbook.createCellStyle();
+	cellStyleAsTime.setDataFormat(createHelper.createDataFormat().getFormat("h:mm"));
 	XSSFSheet sheet = workbook.createSheet("Total");
 	List<Entity> entities;
 	boolean success = true;
@@ -69,9 +72,7 @@ public class ExcelReaderUtility {
 			Entity last = outSet.last();
 			last.setDate(last.getDate().plusHours(5));
 			XSSFRow row = sheet.createRow(rowNum++);
-			createRowFromEntity(first, row);
-			row = sheet.createRow(rowNum++);
-			createRowFromEntity(last, row);
+			createRowFromEntity(first, last, row);
 		    }
 		}
 	    }
@@ -95,7 +96,7 @@ public class ExcelReaderUtility {
 	    System.out.println("Rapor başarıyla oluşturuldu.");
     }
 
-    private void createRowFromEntity(Entity first, XSSFRow row) {
+    private void createRowFromEntity(Entity first, Entity last, XSSFRow row) {
 	XSSFCell cell = row.createCell(0);
 	cell.setCellValue(first.getId());
 	cell = row.createCell(1);
@@ -103,10 +104,14 @@ public class ExcelReaderUtility {
 	cell = row.createCell(2);
 	cell.setCellValue(first.getSurName());
 	cell = row.createCell(3);
-	cell.setCellValue(first.getAction().getProperty());
-	cell = row.createCell(4);
-	cell.setCellStyle(cellStyle);
+	cell.setCellStyle(cellStyleAsDate);
 	cell.setCellValue(Date.from(first.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	cell = row.createCell(4);
+	cell.setCellStyle(cellStyleAsTime);
+	cell.setCellValue(Date.from(first.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	cell = row.createCell(5);
+	cell.setCellStyle(cellStyleAsTime);
+	cell.setCellValue(Date.from(last.getDate().atZone(ZoneId.systemDefault()).toInstant()));
     }
 
     private void createHeaderRow(XSSFSheet sheet, int rowNum) {
@@ -118,9 +123,11 @@ public class ExcelReaderUtility {
 	cell = row.createCell(2);
 	cell.setCellValue("Soyad");
 	cell = row.createCell(3);
-	cell.setCellValue("Aksiyon");
-	cell = row.createCell(4);
 	cell.setCellValue("Tarih");
+	cell = row.createCell(4);
+	cell.setCellValue("Giriş Saati");
+	cell = row.createCell(5);
+	cell.setCellValue("Çıkış Saati");
     }
 
     private List<Entity> getEntities() throws IOException {
