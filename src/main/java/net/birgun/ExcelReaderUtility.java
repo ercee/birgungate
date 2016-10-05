@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -44,11 +45,7 @@ public class ExcelReaderUtility {
 	    e2.printStackTrace();
 	}
 	XSSFWorkbook workbook = new XSSFWorkbook();
-	cellStyleAsDate = workbook.createCellStyle();
-	CreationHelper createHelper = workbook.getCreationHelper();
-	cellStyleAsDate.setDataFormat(createHelper.createDataFormat().getFormat("d MMMM yyyy"));
-	cellStyleAsTime = workbook.createCellStyle();
-	cellStyleAsTime.setDataFormat(createHelper.createDataFormat().getFormat("h:mm"));
+	setStyles(workbook);
 	XSSFSheet sheet = workbook.createSheet("Total");
 	List<Entity> entities;
 	boolean success = true;
@@ -60,6 +57,7 @@ public class ExcelReaderUtility {
 			    Collectors.groupingBy(Entity::getId, Collectors.groupingBy(Entity::getAction))));
 	    int rowNum = 0;
 	    createHeaderRow(sheet, rowNum++);
+	    Map<Integer, List<EntityHolder>> nameBasedEntities = new LinkedHashMap<>();
 	    for (Map<Integer, Map<ActionType, List<Entity>>> dateUserActionList : idMap.values()) {
 		for (Map<ActionType, List<Entity>> userActionList : dateUserActionList.values()) {
 		    List<Entity> inList = userActionList.get(ActionType.IN);
@@ -71,10 +69,33 @@ public class ExcelReaderUtility {
 			TreeSet<Entity> outSet = new TreeSet<>(outList);
 			Entity last = outSet.last();
 			last.setDate(last.getDate().plusHours(5));
-			XSSFRow row = sheet.createRow(rowNum++);
-			createRowFromEntity(first, last, row);
+			createRowFromEntity(first, last, sheet.createRow(rowNum++));
+			Integer id = first == null ? (last == null ? last.getId() : 0) : first.getId();
+			List<EntityHolder> list = nameBasedEntities.get(id);
+			if (list == null) {
+			    list = new LinkedList<>();
+			    nameBasedEntities.put(id, list);
+			}
+			list.add(new EntityHolder(first, last));
 		    }
 		}
+	    }
+
+	    for (List<EntityHolder> namedEntities : nameBasedEntities.values()) {
+		XSSFWorkbook nameWorkbook = new XSSFWorkbook();
+		setStyles(nameWorkbook);
+		XSSFSheet nameSheet = nameWorkbook.createSheet("Total");
+		int nameRow = 0;
+		createHeaderRow(nameSheet, nameRow++);
+		for (EntityHolder entityHolder : namedEntities) {
+		    createRowFromEntity(entityHolder.getFirst(), entityHolder.getLast(), nameSheet.createRow(nameRow++));
+		}
+		Entity first = namedEntities.get(0).getFirst();
+		FileOutputStream out = new FileOutputStream(
+			new File(getPath(first.getName() + first.getSurName(), ".xlsx")));
+		nameWorkbook.write(out);
+		nameWorkbook.close();
+		out.close();
 	    }
 	} catch (IOException e1) {
 	    System.out.println(e1.getMessage() + " ilgili dosya bulunamadı veya kullanımda.");
@@ -94,6 +115,14 @@ public class ExcelReaderUtility {
 	}
 	if (success)
 	    System.out.println("Rapor başarıyla oluşturuldu.");
+    }
+
+    private void setStyles(XSSFWorkbook workbook) {
+	cellStyleAsDate = workbook.createCellStyle();
+	CreationHelper createHelper = workbook.getCreationHelper();
+	cellStyleAsDate.setDataFormat(createHelper.createDataFormat().getFormat("d MMMM yyyy"));
+	cellStyleAsTime = workbook.createCellStyle();
+	cellStyleAsTime.setDataFormat(createHelper.createDataFormat().getFormat("h:mm"));
     }
 
     private void createRowFromEntity(Entity first, Entity last, XSSFRow row) {
