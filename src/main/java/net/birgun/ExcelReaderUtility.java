@@ -62,22 +62,27 @@ public class ExcelReaderUtility {
 		for (Map<ActionType, List<Entity>> userActionList : dateUserActionList.values()) {
 		    List<Entity> inList = userActionList.get(ActionType.IN);
 		    List<Entity> outList = userActionList.get(ActionType.OUT);
-		    if (inList != null && outList != null) {
+		    Entity first = null;
+		    Entity last = null;
+		    if (inList != null) {
 			TreeSet<Entity> inSet = new TreeSet<>(inList);
-			Entity first = inSet.first();
+			first = inSet.first();
 			first.setDate(first.getDate().plusHours(5));
-			TreeSet<Entity> outSet = new TreeSet<>(outList);
-			Entity last = outSet.last();
-			last.setDate(last.getDate().plusHours(5));
-			createRowFromEntity(first, last, sheet.createRow(rowNum++));
-			Integer id = first == null ? (last == null ? last.getId() : 0) : first.getId();
-			List<EntityHolder> list = nameBasedEntities.get(id);
-			if (list == null) {
-			    list = new LinkedList<>();
-			    nameBasedEntities.put(id, list);
-			}
-			list.add(new EntityHolder(first, last));
+
 		    }
+		    if (outList != null) {
+			TreeSet<Entity> outSet = new TreeSet<>(outList);
+			last = outSet.last();
+			last.setDate(last.getDate().plusHours(5));
+		    }
+		    createRowFromEntity(first, last, sheet.createRow(rowNum++));
+		    Integer id = first == null ? last.getId() : first.getId();
+		    List<EntityHolder> list = nameBasedEntities.get(id);
+		    if (list == null) {
+			list = new LinkedList<>();
+			nameBasedEntities.put(id, list);
+		    }
+		    list.add(new EntityHolder(first, last));
 		}
 	    }
 
@@ -88,7 +93,8 @@ public class ExcelReaderUtility {
 		int nameRow = 0;
 		createHeaderRow(nameSheet, nameRow++);
 		for (EntityHolder entityHolder : namedEntities) {
-		    createRowFromEntity(entityHolder.getFirst(), entityHolder.getLast(), nameSheet.createRow(nameRow++));
+		    createRowFromEntity(entityHolder.getFirst(), entityHolder.getLast(),
+			    nameSheet.createRow(nameRow++));
 		}
 		Entity first = namedEntities.get(0).getFirst();
 		FileOutputStream out = new FileOutputStream(
@@ -127,20 +133,32 @@ public class ExcelReaderUtility {
 
     private void createRowFromEntity(Entity first, Entity last, XSSFRow row) {
 	XSSFCell cell = row.createCell(0);
-	cell.setCellValue(first.getId());
+	int id = first == null ? last.getId() : first.getId();
+	cell.setCellValue(id);
 	cell = row.createCell(1);
-	cell.setCellValue(first.getName());
+	String name = first == null ? last.getName() : first.getName();
+	cell.setCellValue(name);
 	cell = row.createCell(2);
-	cell.setCellValue(first.getSurName());
+	String surName = first == null ? last.getSurName() : first.getSurName();
+	cell.setCellValue(surName);
 	cell = row.createCell(3);
 	cell.setCellStyle(cellStyleAsDate);
-	cell.setCellValue(Date.from(first.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	LocalDateTime date = first == null ? last.getDate() : first.getDate();
+	cell.setCellValue(Date.from(date.atZone(ZoneId.systemDefault()).toInstant()));
 	cell = row.createCell(4);
 	cell.setCellStyle(cellStyleAsTime);
-	cell.setCellValue(Date.from(first.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	if (first != null) {
+	    cell.setCellValue(Date.from(first.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	} else {
+	    cell.setCellValue("Giriş yok");
+	}
 	cell = row.createCell(5);
 	cell.setCellStyle(cellStyleAsTime);
-	cell.setCellValue(Date.from(last.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	if (last != null) {
+	    cell.setCellValue(Date.from(last.getDate().atZone(ZoneId.systemDefault()).toInstant()));
+	} else {
+	    cell.setCellValue("Çıkış yok");
+	}
     }
 
     private void createHeaderRow(XSSFSheet sheet, int rowNum) {
