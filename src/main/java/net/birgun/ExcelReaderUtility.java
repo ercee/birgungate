@@ -97,8 +97,14 @@ public class ExcelReaderUtility {
 			    nameSheet.createRow(nameRow++));
 		}
 		Entity first = namedEntities.get(0).getFirst();
-		FileOutputStream out = new FileOutputStream(
-			new File(getPath(first.getName() + first.getSurName(), ".xlsx")));
+		Entity last = namedEntities.get(0).getLast();
+		String fileName = null;
+		if (first != null) {
+		    fileName = first.getName() + first.getSurName();
+		} else {
+		    fileName = last.getName() + last.getSurName();
+		}
+		FileOutputStream out = new FileOutputStream(new File(getPath(fileName, ".xlsx")));
 		nameWorkbook.write(out);
 		nameWorkbook.close();
 		out.close();
